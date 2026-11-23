@@ -1,0 +1,26 @@
+[package]
+name = "rban"
+version = "0.1.0"
+edition = "2024"
+description = "Print text as ASCII/ANSI art — Rust port of banna"
+authors = ["Sergio Pérez <brue@gmx.com>"]
+
+[[bin]]
+name = "rban"
+path = "src/main.rs"
+
+[dependencies]
+anyhow = "1"
+clap = { version = "4", features = ["derive"] }
+figdriver = "0.6.1"
+is-terminal = "0.4"
+rand = "0.8"
+rust-embed = { version = "8", features = ["include-exclude"] }
+serde_json = "1"
+
+[profile.release]
+strip = true
+opt-level = "z"
+lto = true
+codegen-units = 1
+panic = "abort"

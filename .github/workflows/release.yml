@@ -1,0 +1,101 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: ${{ matrix.binary_name }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: x86_64-unknown-linux-musl
+            os: ubuntu-latest
+            binary_name: rban-linux-x86_64
+            use_cross: false
+
+          - target: aarch64-unknown-linux-musl
+            os: ubuntu-latest
+            binary_name: rban-linux-aarch64
+            use_cross: true
+
+          - target: x86_64-apple-darwin
+            os: macos-13
+            binary_name: rban-macos-x86_64
+            use_cross: false
+
+          - target: aarch64-apple-darwin
+            os: macos-14
+            binary_name: rban-macos-aarch64
+            use_cross: false
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Install musl-tools
+        if: matrix.target == 'x86_64-unknown-linux-musl'
+        run: sudo apt-get install -y musl-tools
+
+      - name: Install cross
+        if: matrix.use_cross
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cross
+
+      - name: Install UPX
+        if: runner.os == 'Linux'
+        run: sudo apt-get install -y upx
+
+      - name: Build
+        run: |
+          if [ "${{ matrix.use_cross }}" = "true" ]; then
+            cross build --release --target ${{ matrix.target }}
+          else
+            cargo build --release --target ${{ matrix.target }}
+          fi
+
+      - name: Compress with UPX (Linux)
+        if: runner.os == 'Linux'
+        run: upx --lzma target/${{ matrix.target }}/release/rban
+
+      - name: Stage artifact (Linux — bare binary)
+        if: runner.os == 'Linux'
+        run: cp target/${{ matrix.target }}/release/rban ${{ matrix.binary_name }}
+
+      - name: Stage artifact (macOS — tar.gz)
+        if: runner.os == 'macOS'
+        run: |
+          cp target/${{ matrix.target }}/release/rban rban
+          tar czf ${{ matrix.binary_name }}.tar.gz rban
+          rm rban
+
+      - name: Upload to release (Linux)
+        if: runner.os == 'Linux'
+        uses: ncipollo/release-action@v1
+        with:
+          artifacts: ${{ matrix.binary_name }}
+          allowUpdates: true
+          omitBodyDuringUpdate: true
+          omitNameDuringUpdate: true
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload to release (macOS)
+        if: runner.os == 'macOS'
+        uses: ncipollo/release-action@v1
+        with:
+          artifacts: ${{ matrix.binary_name }}.tar.gz
+          allowUpdates: true
+          omitBodyDuringUpdate: true
+          omitNameDuringUpdate: true
+          token: ${{ secrets.GITHUB_TOKEN }}
