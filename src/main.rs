@@ -57,6 +57,10 @@ struct Args {
     #[arg(long)]
     list_themes: bool,
 
+    /// Write a fonts.conf listing every bundled font (to PATH, default ./fonts.conf; "-" = stdout) and exit
+    #[arg(long, value_name = "PATH", num_args = 0..=1, default_missing_value = "fonts.conf")]
+    dump_conf: Option<String>,
+
     /// Print font credits and exit
     #[arg(long)]
     credits: bool,
@@ -171,6 +175,47 @@ fn load_groups(content: &str, all_tdf: &[String]) -> HashMap<String, Vec<String>
         groups.insert("ansi".to_string(), all_tdf.to_vec());
     }
     groups
+}
+
+/// A fonts.conf with every font in the binary and no comments: the block-style fonts of the current
+/// [gradient] section stay there, the rest of the FIGlet fonts go to [fonts], and [ansi] lists every TheDraw font.
+fn build_full_conf(groups: &HashMap<String, Vec<String>>, all_tdf: &[String]) -> String {
+    let gradient: Vec<String> = groups.get("gradient").cloned().unwrap_or_default();
+    let grad_set: HashSet<String> = gradient.iter().map(|f| norm(f)).collect();
+
+    let mut stems: Vec<String> = assets::ascii_files()
+        .filter(|n| n.ends_with(".flf") || n.ends_with(".tlf"))
+        .map(|n| n.rsplit_once('.').map(|(s, _)| s).unwrap_or(&n).to_string())
+        .collect();
+    stems.sort_by_key(|s| s.to_lowercase());
+    stems.dedup_by_key(|s| norm(s));
+    let plain: Vec<&String> = stems.iter().filter(|s| !grad_set.contains(&norm(s))).collect();
+
+    let default = groups
+        .get("default")
+        .and_then(|v| v.first().cloned())
+        .or_else(|| plain.first().map(|s| s.to_string()))
+        .unwrap_or_default();
+
+    let mut out = String::new();
+    out.push_str("[default]\n");
+    out.push_str(&default);
+    out.push_str("\n\n[fonts]\n");
+    for f in plain {
+        out.push_str(f);
+        out.push('\n');
+    }
+    out.push_str("\n[gradient]\n");
+    for f in &gradient {
+        out.push_str(f);
+        out.push('\n');
+    }
+    out.push_str("\n[ansi]\n");
+    for f in all_tdf {
+        out.push_str(f);
+        out.push('\n');
+    }
+    out
 }
 
 // ── FIGlet font index (from embedded ascii/ bundle) ───────────────────────────
@@ -449,6 +494,25 @@ fn run() -> Result<()> {
         let mut names: Vec<String> = fig_index.keys().cloned().collect();
         names.sort();
         println!("{}", names.join("\n"));
+        return Ok(());
+    }
+
+    if let Some(ref path) = args.dump_conf {
+        let conf = find_conf(args.conf.as_deref()).unwrap_or_default();
+        let groups = load_groups(&conf, &all_tdf);
+        let text = build_full_conf(&groups, &all_tdf);
+        if path == "-" {
+            print!("{text}");
+        } else {
+            use std::io::Write;
+            let mut f = std::fs::OpenOptions::new()
+                .write(true)
+                .create_new(true)
+                .open(path)
+                .map_err(|e| anyhow::anyhow!("cannot create {path}: {e} (it is never overwritten; remove it or pick another PATH)"))?;
+            f.write_all(text.as_bytes())?;
+            eprintln!("rban: wrote {path} ({} fonts); use it with --conf {path} or copy it to ~/.config/rban/fonts.conf", text.lines().filter(|l| !l.is_empty() && !l.starts_with('[')).count());
+        }
         return Ok(());
     }
 

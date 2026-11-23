@@ -47,7 +47,7 @@ To update, run the same command again. To uninstall:
 Piping a script into a shell runs whatever is served, so you may prefer to read [install.sh](install.sh) first (it is
 short) or to pin a release:
 
-    curl -fsSL https://raw.githubusercontent.com/s-brue/rban/main/install.sh | RBAN_REF=v0.1.2 bash
+    curl -fsSL https://raw.githubusercontent.com/s-brue/rban/main/install.sh | RBAN_REF=v0.1.3 bash
 
 `RBAN_PREFIX` overrides the install location (default: `~/.local`).
 
@@ -82,6 +82,7 @@ Font names ignore case, spaces, hyphens and underscores: `-f "ANSI Shadow"` and 
 | `--truecolor` | Use exact CGA RGB colors for TheDraw fonts instead of the terminal's 16-color palette. |
 | `--width N` | Maximum width for FIGlet fonts (default 120). |
 | `--conf PATH` | Use an alternative `fonts.conf`. |
+| `--dump-conf [PATH]` | Write a `fonts.conf` that lists every bundled font, uncommented, to `PATH` (default `./fonts.conf`; `-` for stdout) and exit. It never overwrites an existing file. |
 | `--list-figlet`, `--list-ansi`, `--list-themes` | List available fonts / themes and exit. |
 | `--credits` | Print font credits and exit (uses pager when stdout is a TTY). |
 | `--license` | Print the software license and dependency list, and exit. |
@@ -132,8 +133,16 @@ rban looks for the config in this order:
 3. `/etc/rban/fonts.conf`
 4. the bundled one (compiled into the binary)
 
-To customize it, copy the bundled `fonts.conf` from the [repository](fonts.conf) to
-`~/.config/rban/fonts.conf` and edit it. The rotation history is in `~/.cache/rban.json`
+To customize it, generate a config with every font the binary contains, all active and without comments,
+and edit it:
+
+    rban --dump-conf                          # writes ./fonts.conf (never overwrites an existing file)
+    mkdir -p ~/.config/rban && mv fonts.conf ~/.config/rban/
+    rban --dump-conf - > my-fonts.conf        # or to stdout; then use it with: rban "Hello" --all --conf my-fonts.conf
+
+Delete a line (or put `#` in front of it) to remove a font from the rotation. The block-style fonts stay in
+`[gradient]` so they keep getting their color gradient. You can also copy the curated default from the
+[repository](fonts.conf). The rotation history is in `~/.cache/rban.json`
 (`$XDG_CACHE_HOME` is honored; delete it to reset).
 
 > **Note:** TAAG has 643 FIGlet fonts, but 257 of them do not read well (misaligned fonts, Commodore 64
