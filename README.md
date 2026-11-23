@@ -9,7 +9,7 @@ colored TheDraw fonts. No Python, no dependencies, one self-contained binary.
 rban is a command-line take on it, written in Rust. All the credit for the idea, and for gathering these fonts, goes to him.
 
 rban is a rewrite of [banna](https://github.com/s-brue/banna), built for two reasons: speed (startup goes from ~40 ms
-in Python to ~2 ms) and self-containment (all 3,800+ fonts are compiled into a single binary — no Python, no venv,
+in Python to ~5 ms) and self-containment (all 3,800+ fonts are compiled into a single binary — no Python, no venv,
 no separate font files).
 
 ## Features
@@ -19,7 +19,8 @@ no separate font files).
 - Color gradients with classic themes (Monokai, Dracula, Solarized, Nord, Gruvbox, One Dark, Tokyo Night,
   Catppuccin, Synthwave) on **any** font; TheDraw fonts keep their shading.
 - Pick your own rotation: `fonts.conf` lists every font; comment out the ones you don't like.
-- Single static binary (~3.5 MB on Linux). No runtime dependencies.
+- A single binary with no runtime dependencies: about 31 MB with all the fonts inside, and about 5 MB as the
+  downloaded `.tar.gz`.
 - One-line install for your user (`curl | bash`, no `sudo`), for Linux and macOS on x86_64 and aarch64.
 
 ![Colored TheDraw fonts](assets/ansi-fonts.png)
@@ -46,7 +47,7 @@ To update, run the same command again. To uninstall:
 Piping a script into a shell runs whatever is served, so you may prefer to read [install.sh](install.sh) first (it is
 short) or to pin a release:
 
-    curl -fsSL https://raw.githubusercontent.com/s-brue/rban/main/install.sh | RBAN_REF=v0.1.1 bash
+    curl -fsSL https://raw.githubusercontent.com/s-brue/rban/main/install.sh | RBAN_REF=v0.1.2 bash
 
 `RBAN_PREFIX` overrides the install location (default: `~/.local`).
 
@@ -148,18 +149,19 @@ To customize it, copy the bundled `fonts.conf` from the [repository](fonts.conf)
     fonts.conf       fonts in the default rotation
     ascii/           FIGlet fonts (.flf, .tlf) — bundled into the binary at compile time
     ansi/            TheDraw fonts (.tdf) and index.json — bundled into the binary at compile time
-    .github/         GitHub Actions release workflow (builds 4 targets, applies UPX on Linux)
+    .github/         GitHub Actions release workflow (builds 4 targets: Linux and macOS, x86_64 and aarch64)
 
 ## Development
 
     cargo build                  # debug build
-    cargo build --release        # release build (~32 MB before UPX)
+    cargo build --release        # release build (~31 MB)
     cargo run -- "Hello"         # run from checkout
     cargo test                   # run tests
 
-The release binary embeds all fonts via [rust-embed](https://github.com/pyros2097/rust-embed).
-Applying `upx --lzma` brings it from ~32 MB to ~3.5 MB on Linux.
-The GitHub Actions workflow does this automatically for every release tag.
+The release binary embeds all fonts via [rust-embed](https://github.com/pyros2097/rust-embed), which is why it is
+~31 MB. It is **not** compressed with UPX on purpose: a UPX binary unpacks itself into memory on every run, and
+that made rban take ~150 ms to start instead of ~5 ms. The release asset is a plain `.tar.gz` of the binary
+(~5 MB to download). The GitHub Actions workflow builds and uploads it for every release tag.
 
 ## Credits
 

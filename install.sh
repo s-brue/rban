@@ -16,6 +16,20 @@
 set -euo pipefail
 
 REPO="s-brue/rban"
+TMP=""
+
+cleanup() { [ -z "$TMP" ] || rm -rf "$TMP"; }
+trap cleanup EXIT
+
+download() { # download URL FILE
+  if command -v curl >/dev/null; then
+    curl -fsSL "$1" -o "$2"
+  elif command -v wget >/dev/null; then
+    wget -qO "$2" "$1"
+  else
+    die "curl or wget is required"
+  fi
+}
 
 say() { printf '==> %s\n' "$*"; }
 die() { printf 'rban install: %s\n' "$*" >&2; exit 1; }
@@ -62,32 +76,21 @@ main() {
     [ -n "$ref" ] || die "could not determine latest release (is the repo public and has releases?)"
   fi
 
-  # Linux: bare binary (UPX-compressed). macOS: .tar.gz archive.
-  local binary="rban-${os}-${arch}"
-  local archive=""
-  [ "$os" = "macos" ] && archive=".tar.gz"
-  local url="https://github.com/$REPO/releases/download/$ref/${binary}${archive}"
+  # The release asset is rban-<os>-<arch>.tar.gz. Releases up to v0.1.1 shipped the Linux binary bare (UPX-compressed,
+  # slow to start), so a pinned old RBAN_REF still works.
+  local base="https://github.com/$REPO/releases/download/$ref/rban-${os}-${arch}"
 
   say "installing rban $ref ($os/$arch) into $dest"
   mkdir -p "$prefix/bin"
 
-  if [ -n "$archive" ]; then
-    local tmp
-    tmp="$(mktemp -d)"
-    if command -v curl >/dev/null; then
-      curl -fsSL "$url" -o "$tmp/rban.tar.gz"
-    else
-      wget -qO "$tmp/rban.tar.gz" "$url"
-    fi
-    tar xzf "$tmp/rban.tar.gz" -C "$tmp"
-    mv "$tmp/rban" "$dest"
-    rm -rf "$tmp"
+  TMP="$(mktemp -d)"
+  if download "$base.tar.gz" "$TMP/rban.tar.gz" 2>/dev/null; then
+    tar xzf "$TMP/rban.tar.gz" -C "$TMP"
+    mv "$TMP/rban" "$dest"
+  elif [ "$os" = "linux" ] && download "$base" "$TMP/rban" 2>/dev/null; then
+    mv "$TMP/rban" "$dest"
   else
-    if command -v curl >/dev/null; then
-      curl -fsSL "$url" -o "$dest"
-    else
-      wget -qO "$dest" "$url"
-    fi
+    die "could not download $base.tar.gz (is there a release $ref for $os/$arch?)"
   fi
   chmod 755 "$dest"
 

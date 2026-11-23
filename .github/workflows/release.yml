@@ -55,10 +55,6 @@ jobs:
         with:
           tool: cross
 
-      - name: Install UPX
-        if: runner.os == 'Linux'
-        run: sudo apt-get install -y upx
-
       - name: Build
         run: |
           if [ "${{ matrix.use_cross }}" = "true" ]; then
@@ -67,33 +63,15 @@ jobs:
             cargo build --release --target ${{ matrix.target }}
           fi
 
-      - name: Compress with UPX (Linux)
-        if: runner.os == 'Linux'
-        run: upx --lzma target/${{ matrix.target }}/release/rban
-
-      - name: Stage artifact (Linux — bare binary)
-        if: runner.os == 'Linux'
-        run: cp target/${{ matrix.target }}/release/rban ${{ matrix.binary_name }}
-
-      - name: Stage artifact (macOS — tar.gz)
-        if: runner.os == 'macOS'
+      # UPX is not used: a UPX binary decompresses itself (about 30 MB) on every run, which made startup
+      # take ~150 ms instead of ~5 ms. The release archive is a plain .tar.gz of the binary, on every OS.
+      - name: Package (tar.gz)
         run: |
           cp target/${{ matrix.target }}/release/rban rban
           tar czf ${{ matrix.binary_name }}.tar.gz rban
           rm rban
 
-      - name: Upload to release (Linux)
-        if: runner.os == 'Linux'
-        uses: ncipollo/release-action@v1
-        with:
-          artifacts: ${{ matrix.binary_name }}
-          allowUpdates: true
-          omitBodyDuringUpdate: true
-          omitNameDuringUpdate: true
-          token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Upload to release (macOS)
-        if: runner.os == 'macOS'
+      - name: Upload to release
         uses: ncipollo/release-action@v1
         with:
           artifacts: ${{ matrix.binary_name }}.tar.gz
