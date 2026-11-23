@@ -26,13 +26,15 @@ jobs:
             binary_name: rban-linux-aarch64
             use_cross: true
 
+          # Both macOS binaries are built on the arm64 runner: macos-13 and macos-14 are no longer offered
+          # (the jobs stay queued or are cancelled), and the Intel binary is cross-compiled with the extra target.
           - target: x86_64-apple-darwin
-            os: macos-13
+            os: macos-latest
             binary_name: rban-macos-x86_64
             use_cross: false
 
           - target: aarch64-apple-darwin
-            os: macos-14
+            os: macos-latest
             binary_name: rban-macos-aarch64
             use_cross: false
 

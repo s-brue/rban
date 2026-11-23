@@ -1,6 +1,6 @@
 [package]
 name = "rban"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2024"
 description = "Print text as ASCII/ANSI art — Rust port of banna"
 authors = ["Sergio Pérez <brue@gmx.com>"]

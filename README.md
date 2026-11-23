@@ -46,7 +46,7 @@ To update, run the same command again. To uninstall:
 Piping a script into a shell runs whatever is served, so you may prefer to read [install.sh](install.sh) first (it is
 short) or to pin a release:
 
-    curl -fsSL https://raw.githubusercontent.com/s-brue/rban/main/install.sh | RBAN_REF=v0.1.0 bash
+    curl -fsSL https://raw.githubusercontent.com/s-brue/rban/main/install.sh | RBAN_REF=v0.1.1 bash
 
 `RBAN_PREFIX` overrides the install location (default: `~/.local`).
 
